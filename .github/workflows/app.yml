@@ -50,15 +50,11 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest
 
   deploy:
-    needs: build-and-push
     runs-on: ubuntu-latest
-
+    needs: build-and-push
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Fix Permissions
-        run: sudo chmod -R 700 ~/.ssh
+        uses: actions/checkout@v3
 
       - name: Set up SSH Key
         run: |
@@ -70,18 +66,15 @@ jobs:
       - name: Deploy to Minikube (on EC2)
         run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@${{ secrets.EC2_MINIKUBE_IP }} << 'EOF'
-          
-          # Switch to Minikube environment
-          minikube start --driver=docker || true
-          kubectl config use-context minikube
+            # Switch to the Minikube context
+            kubectl config use-context minikube
 
-          # Pull latest Docker image
-          kubectl delete deployment myapp-deployment --ignore-not-found=true
-          kubectl create deployment myapp-deployment --image=${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest
+            # Pull latest Docker image
+            kubectl delete deployment my-python-app --ignore-not-found
+            kubectl apply -f deployment.yml
 
-          # Expose the app
-          kubectl expose deployment myapp-deployment --type=NodePort --port=80 --name=myapp-service
+            # Expose service if not already exposed
+            kubectl expose deployment my-python-app --type=NodePort --port=5000 --name=my-python-service || true
 
-          # Get Minikube service URL
-          minikube service myapp-service --url
+            echo "Deployment completed successfully!"
           EOF
