@@ -1,4 +1,4 @@
-name: Python CI/CD
+name: Build, Test, Push Docker Image, and Deploy to Minikube
 
 on:
   push:
@@ -28,15 +28,40 @@ jobs:
       - name: Run Tests
         run: python -m unittest discover
 
-  deploy:
-    needs: build-test
+  build-and-push:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    needs: build-test  # Run only if build-test succeeds
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Deploy Application
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build Docker Image
         run: |
-          echo "Deploying application..."
-          # Add your deployment script here (e.g., SCP, Docker, SSH, AWS/GCP/Azure deployment)
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/my-python-app:latest .
+
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/my-python-app:latest
+
+  deploy-to-minikube:
+    runs-on: ubuntu-latest
+    needs: build-and-push  # Run only if build-and-push succeeds
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Minikube
+        uses: medyagh/setup-minikube@v0.0.14
+
+      - name: Deploy to Minikube
+        run: |
+          kubectl create deployment my-python-app --image=${{ secrets.DOCKERHUB_USERNAME }}/my-python-app:latest || kubectl set image deployment/my-python-app my-python-app=${{ secrets.DOCKERHUB_USERNAME }}/my-python-app:latest
+          kubectl expose deployment my-python-app --type=NodePort --port=5000 || true
+          kubectl get pods -o wide
+
