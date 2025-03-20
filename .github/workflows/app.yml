@@ -64,3 +64,9 @@ jobs:
           kubectl create deployment my-python-app --image=${{ secrets.DOCKERHUB_USERNAME }}/my-python-app:latest || kubectl set image deployment/my-python-app my-python-app=${{ secrets.DOCKERHUB_USERNAME }}/my-python-app:latest
           kubectl expose deployment my-python-app --type=NodePort --port=5000 || true
           kubectl get pods -o wide
+
+      - name: Get Minikube Service URL
+        run: |
+          echo "Fetching Minikube service URL..."
+          minikube service my-python-app --url
+
