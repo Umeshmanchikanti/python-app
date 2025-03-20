@@ -65,6 +65,12 @@ jobs:
           kubectl expose deployment my-python-app --type=NodePort --port=5000 || true
           kubectl get pods -o wide
 
+      - name: Wait for Pod to Be Ready
+        run: kubectl wait --for=condition=ready pod -l app=my-python-app --timeout=60s
+
+      - name: Verify Service
+        run: kubectl get svc my-python-app
+
       - name: Get Minikube Service URL
         run: |
           echo "Fetching Minikube service URL..."
